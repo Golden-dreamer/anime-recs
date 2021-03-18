@@ -50,6 +50,10 @@ class Recommender:
         pivot.columns = pivot.columns.droplevel(0)
         my_corr = pivot.corrwith(pivot[self.user]).sort_values(ascending=False).dropna()
         return my_corr.iloc[1:] # skip myself
+    
+    def score_items(self, items, k_users=50):
+        data = self.data
+        pass
         
     def score_item(self, item, k_users=50):
         data = self.data            
@@ -86,8 +90,8 @@ class Recommender:
         rv_mean = self.users_mean.loc[users]        
         W = self.weights.iloc[:k_users]
         index_to_sum = rv.index
-        if len(index_to_sum) == 0:
-            return np.nan
+        if len(index_to_sum) == 0: # not enough users watched this item
+            return 0
         rate = ((rv-rv_mean) * W).sum() / W[index_to_sum].sum() + self.user_mean
         return rate
     

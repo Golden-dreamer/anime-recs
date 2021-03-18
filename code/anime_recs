@@ -96,16 +96,41 @@ MY_USER_ID = -1
 ratings = get_users_ratings()
 anime_titles = get_titles()
 my_ratings = get_my_ratings()
-#ratings_with_me = ratings.append(my_ratings).fillna(MY_USER_ID )
+
+df_anime = pd.read_csv('../data/anime/AnimeList.csv')
+# ratings_with_me = ratings.append(my_ratings).fillna(MY_USER_ID )
 
 too_many_items = 500
-#data_refined = drop_users_with_too_many_items(ratings_with_me, too_many_items)
+# data_refined = drop_users_with_too_many_items(ratings_with_me, too_many_items)
 
-#data_without_happy_users  = drop_users_with_high_proportion_of_ratings(data_refined)
+# data_without_happy_users  = drop_users_with_high_proportion_of_ratings(data_refined)
     
-#data_check = replace_rating_with_0_and_1(data_without_happy_users)
+# data_check = replace_rating_with_0_and_1(data_without_happy_users)
 
 data = pd.read_csv(PATH_REPLACED_RATINGS, usecols=['user','item','rating']) 
+
+df_anime.genre = df_anime.genre.str.lower()
+df_anime.genre = df_anime.genre.str.strip()
+items_e = df_anime[(df_anime.genre.str.contains('ecchi')) > 0]['anime_id']
+
+ecchi_df = ratings[ratings.item.isin(items_e)]
+bad_users_e = ecchi_df[ecchi_df.rating > 5].user.unique()
+no_ecchi = ratings[~ratings.user.isin(bad_users_e)]
+
+#without_ecchi = ratings[~ratings.item.isin(items_e)]
+items_h = df_anime[(df_anime.genre.str.contains('hentai')) > 0]['anime_id']
+
+hentai = ratings[ratings.item.isin(items_h)]
+bad_users_h = hentai[hentai.rating > 5].user.unique()
+
+virginity = no_ecchi[~no_ecchi.user.isin(bad_users_h)]
+#no_ecchi_hentai = without_ecchi[~without_ecchi.item.isin(items_h)]
+
+data = virginity 
+data_with_me = data.append(my_ratings).fillna(MY_USER_ID )
+data = drop_users_with_too_many_items(data_with_me , too_many_items)
+data = drop_users_with_high_proportion_of_ratings(data)
+data = replace_rating_with_0_and_1(data)
 
 #train, test = split_df(data)
 user = -1
@@ -113,7 +138,7 @@ user = -1
 min_items = 30
 
 #alg = Recommender(train , user, min_items=min_items,titles=anime_titles)
-alg = Recommender(data , user, min_items=min_items,titles=anime_titles)
+#alg = Recommender(data, user, min_items=min_items,titles=anime_titles)
 k_nn = 50
 t = 0.75
 
@@ -123,21 +148,24 @@ t = 0.75
 def score_error(train, test, k_users=50):
      #df = df.sample(frac=1.0)
      users = test.user.unique()
-     users = users[:len(users)//2000] # reduce calculations
-     global_error = 0
+     users = users[:len(users)//10000] # reduce calculations
+     global_mae = 0
+     n = 0
      for user in users:
-         min_items = 15
+         min_items = 30
          model = Recommender(train, user, min_items)
-         t,p,n = model.recs(test[test.user == user].item,k_users,0.75)
+         t,p,neg = model.recs(test[test.user == user].item,k_users,0.75)
          true_result = test[test.user == user].set_index('item')['rating']
          items= [el[0] for el in t]
          vals = [el[1] for el in t]
          actual_result = pd.Series(vals, index=items)
-         global_error += (true_result - actual_result).sum()
+         mae = mean_absolute_error(actual_result, true_result)
+         print(mae)
+         global_mae +=mae
+         n = n + 1
+     res = global_mae / n
          
-     print(f'total misses: {global_error}')
+     print(f'total misses: {res}')
          
-    
-#score_error(alg,valid)
-#score_error(alg2,valid)
+
 
