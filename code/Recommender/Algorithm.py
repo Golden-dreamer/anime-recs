@@ -6,15 +6,6 @@ Created on Sat Mar  6 07:55:12 2021
 @author: leo
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Mar  6 07:43:09 2021
-
-@author: leo
-"""
-import numpy as np
-
 def get_user_rating( user,data):
         return data.loc[data['user'] == user].set_index('item')['rating']
     
@@ -52,37 +43,13 @@ class Recommender:
         return my_corr.iloc[1:] # skip myself
     
     def score_items(self, items, k_users=50):
+        raise NotImplementedError
         data = self.data
         pass
         
     def score_item(self, item, k_users=50):
-        data = self.data            
-        # V = data[data['item'] == item] # neighbour V
-        # # delete myself
-        # #V = V.loc[~(V['user'] == self.user)]
-        # self.V =  V
-        # self.users = self.V.user.unique()
-        # self.users_v_ratings = self.V[['user','rating']].set_index('user')['rating']
-        # #users_V_mean = users_mean.loc[V['user']]['rating']
-        # users_V_mean  = self.users_mean[self.users_mean['user'].isin(self.V['user'])]
-        # self.users_V_mean = users_V_mean.set_index('user')['rating']
-        
-     
-        # W = self.weights.iloc[:k_users]
-        # rv = self.users_v_ratings.reindex(W.index).dropna() # rating user V
-        
-        # self.rv = rv
-        # rv_mean = self.users_V_mean.reindex(W.index).dropna()
-        # self.rv_mean = rv_mean
-        # index_to_sum = rv.index
-        # self.i = index_to_sum
-        
-        #multple items ?
-        #V = data[(data.user.isin(users)) & (data.item.isin(item))]
-        
-        
-        users = self.weights.iloc[:k_users].index
-        
+        data = self.data                    
+        users = self.weights.iloc[:k_users].index   
         # V - all who watched this item
         V = data[data.item == item]
         # select important users(with whom I have good enough corr)
@@ -95,7 +62,7 @@ class Recommender:
         rate = ((rv-rv_mean) * W).sum() / W[index_to_sum].sum() + self.user_mean
         return rate
     
-    def recs(self, items, k=10, threshold=6.51760386):
+    def recs(self, items, k=50, threshold=5):
         total_recs = []
         positive_recs = []
         negative_recs = []
