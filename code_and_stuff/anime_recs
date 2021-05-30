@@ -6,7 +6,7 @@ Created on Mon Mar  8 09:30:59 2021
 @author: leo
 """
 from Recommender.Algorithm import Recommender
-
+import pandas as pd
 #from data_handling.handle_data import *
 from data_handling.handle_data import get_anime,get_users_ratings
 from data_handling.handle_data import get_virgin_data, drop_users_with_too_many_items
@@ -14,40 +14,108 @@ from data_handling.handle_data import replace_rating_with_0_and_1
 from data_handling.handle_data import get_titles,get_my_ratings
 from data_handling.handle_data import drop_users_with_high_proportion_of_ratings
 
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
 
 control_group = [7674,5630,395,37520,457,2418,34565,37517,6,16201,31240]
 
 # -1 is me, Mario!
 MY_USER_ID = -1
+MIN_ITEMS = 25 # min common watched items
+
 
 df_anime = get_anime()
 
 ratings = get_users_ratings()
 anime_titles = get_titles()
 my_ratings = get_my_ratings()
+ratings_with_me = ratings.append(my_ratings.to_frame().reset_index()).fillna(MY_USER_ID)
+#ratings_with_me = ratings.append(my_ratings).fillna(MY_USER_ID )
 
-ratings_with_me = ratings.append(my_ratings).fillna(MY_USER_ID )
+problematic_index = 37105
 
-data_virgin = get_virgin_data(ratings_with_me, df_anime, 5,0)
+def get_common_watched_anime(user, ratings=ratings, min_items=25):    
+    # select only items, that user watched
+    pivot=ratings.loc[ratings.item.isin(user.index)].pivot(columns='user',index='item').rating
+    # find users that have common watched anime with user
+    users_worth_finding_sim = pivot.count().loc[pivot.count() > min_items].index
+    sim_find = pivot[users_worth_finding_sim]
+    return sim_find
+
+
+data_virgin = get_virgin_data(ratings_with_me, df_anime, 5,5)
 
 ITEMS_THRESHOLD = 500
 data_too_many_watched = drop_users_with_too_many_items(data_virgin, ITEMS_THRESHOLD )
 
 data_without_happy_users  = drop_users_with_high_proportion_of_ratings(data_too_many_watched,
                                                                         threshold=0.9)
-data_extreme_like_or_not = replace_rating_with_0_and_1(data_without_happy_users)
+#data_extreme_like_or_not = replace_rating_with_0_and_1(data_without_happy_users)
 #data = pd.read_csv(PATH_REPLACED_RATINGS, usecols=['user','item','rating'])
-data_final = data_extreme_like_or_not
-pivot = data_final.pivot(columns='user',index='item').rating
+#data_final = data_extreme_like_or_not
+data_final = data_without_happy_users
+#pivot = data_final.pivot(columns='user',index='item').rating
 #train, test = split_df(data)
-USER = -1
-MIN_ITEMS = 25
-alg = Recommender(data_final, USER, min_items=MIN_ITEMS,titles=anime_titles)
+#alg = Recommender(data_final, USER, min_items=MIN_ITEMS,titles=anime_titles)
 #k,p = best_knn(alg)
 #print(k,p)
 #alg = Recommender(train , user, min_items=min_items,titles=anime_titles)
 #alg = Recommender(data, user, min_items=min_items,titles=anime_titles)
 recs_cols = ['item','recs']
-# t,p,n = alg.recs(anime_titles.item,20,0.75)
+#t,p,n = alg.recs(anime_titles.item,20,0.75)
 # df = pd.DataFrame(t, columns=recs_cols)
 # df = df.sort_values('recs', ascending=False)
+
+#me = my_ratings.loc[my_ratings.item.isin(sim_find.index)].set_index('item').rating
+PATH_TO_ANIME_TITLES_INFO = '/home/leo/ML/anime-recs/data/anime/AnimeList.csv'
+ANIME = pd.read_csv(PATH_TO_ANIME_TITLES_INFO, index_col=0)
+#test = ANIME.loc[me.index].score
+
+def get_recsDF(alg,user, k=50):
+    t = alg.recs(user.index,k=k,return3list=False)
+    recs = pd.DataFrame(t)
+    recs.columns = ['title','score']
+    recs.index = user.index
+    recs = recs.sort_values('score', ascending=False)
+    recs.loc[recs.score > 0]
+    return recs
+
+
+def score_error(user_true, user_predicted):
+    assert user_true.shape[0] == user_predicted.shape[0]
+    mae = mean_absolute_error(user_true, user_predicted)
+    mse = mean_squared_error(user_true, user_predicted)
+    print('mae = ', mae)
+    print('mse = ', mse)
+    return mae, mse
+
+def replace_ratings(data):
+    dat = data.copy()
+    dat[dat <=2] = 1
+    dat[(dat == 3) | (dat == 4)] = 2
+    dat[(dat == 5) | (dat == 6)] = 3
+    dat[(dat == 7) | (dat == 8)] = 4
+    dat[(dat == 9) | (dat == 10)] = 5
+    return dat
+    
+#sim_find = get_common_watched_anime(my_ratings, data_final)
+#w = sim_find.corrwith(my_ratings).sort_values(ascending=False).dropna()
+#w = w.drop(index=[MY_USER_ID])
+
+# normalizing data
+#norm_data = data_final.copy()
+#users_means = data_final.groupby('user')['rating'].mean()
+#norm_data.rating = data_final.apply(lambda x: x.rating - users_means[x.user], axis=1)
+
+alg_cos = Recommender(data_final, MY_USER_ID, titles=anime_titles, cos=True,
+                  min_items=MIN_ITEMS)
+alg = Recommender(data_final, MY_USER_ID, titles=anime_titles, cos=False,
+                  min_items=MIN_ITEMS)
+#recs = get_recsDF(alg, my_ratings,15)
+#user_predicted = recs[~(recs.score == 0)].score # zero means don`t have enough data
+#user_true = my_ratings.loc[user_predicted.index]
+#mae, mse = score_error(user_true , user_predicted)
+#print(mae)
+#print(mse)
+
+

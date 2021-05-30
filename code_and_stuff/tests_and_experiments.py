@@ -38,7 +38,6 @@ data_without_happy_users = drop_users_with_high_proportion_of_ratings(data_too_m
                                                                         threshold=0.9)
 #data_extreme_like_or_not = replace_rating_with_0_and_1(data_without_happy_users)
 data = data_without_happy_users
-#data = pd.read_csv(PATH_REPLACED_RATINGS, usecols=['user','item','rating'])
 #data_final = data_extreme_like_or_not
 #pivot = data_final.loc[data_final.item.isin(my_ratings.item)].pivot(index='user',
 #                                                                    columns='item').rating

@@ -35,7 +35,7 @@ def get_my_ratings():
     my_ratings = pd.read_excel(PATH_MY_RATINGS, usecols=cols)
     my_ratings.columns = ['item', 'rating']
     my_ratings.dropna(inplace=True)
-    return my_ratings
+    return my_ratings.set_index('item').rating
 
 
 def get_titles():
